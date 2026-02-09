@@ -1,0 +1,24 @@
+name: sqlite_diff
+description: Compare two SQLite databases and produce structured diff results with human-readable text output.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqlite3: ^2.7.0
+  collection: ^1.18.0
+  meta: ^1.15.0
+  file_picker: ^8.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  test: ^1.25.0
+
+flutter:
+  uses-material-design: true
