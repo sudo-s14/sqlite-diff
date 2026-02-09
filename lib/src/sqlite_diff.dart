@@ -20,10 +20,13 @@ class SqliteDiff {
   /// Compare two SQLite databases given their file paths.
   ///
   /// Both databases are opened in read-only mode, compared, and then closed.
+  /// Optional [oldPassword] and [newPassword] unlock SQLCipher-encrypted databases.
   static DatabaseDiff compareFiles(
     String oldPath,
     String newPath, {
     DiffOptions options = DiffOptions.defaults,
+    String? oldPassword,
+    String? newPassword,
   }) {
     final effectiveOptions =
         (options.oldLabel == null && options.newLabel == null)
@@ -31,13 +34,25 @@ class SqliteDiff {
             : options;
 
     final oldDb = s3.sqlite3.open(oldPath, mode: s3.OpenMode.readOnly);
-    final newDb = s3.sqlite3.open(newPath, mode: s3.OpenMode.readOnly);
     try {
-      return compareDatabases(oldDb, newDb, options: effectiveOptions);
+      _applyKey(oldDb, oldPassword);
+      final newDb = s3.sqlite3.open(newPath, mode: s3.OpenMode.readOnly);
+      try {
+        _applyKey(newDb, newPassword);
+        return compareDatabases(oldDb, newDb, options: effectiveOptions);
+      } finally {
+        newDb.dispose();
+      }
     } finally {
       oldDb.dispose();
-      newDb.dispose();
     }
+  }
+
+  /// Apply SQLCipher encryption key if provided.
+  static void _applyKey(CommonDatabase db, String? password) {
+    if (password == null || password.isEmpty) return;
+    final escaped = password.replaceAll("'", "''");
+    db.execute("PRAGMA key = '$escaped';");
   }
 
   /// Compare two already-open SQLite database connections.

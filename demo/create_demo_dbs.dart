@@ -157,5 +157,51 @@ void main() {
   newDb.dispose();
   print('Created: $newPath');
 
+  // --- Encrypted Database (SQLCipher) ---
+  final encPath = '$dir/encrypted.db';
+  final encFile = File(encPath);
+  if (encFile.existsSync()) encFile.deleteSync();
+  final encDb = sqlite3.open(encPath);
+
+  // Check if SQLCipher is available
+  final cipherVersion = encDb.select('PRAGMA cipher_version;');
+  if (cipherVersion.isEmpty || cipherVersion.first.values.first == null) {
+    encDb.dispose();
+    print('Skipped encrypted.db: SQLCipher not available (install sqlcipher_flutter_libs or brew install sqlcipher)');
+  } else {
+    encDb.execute("PRAGMA key = 'demo123';");
+
+    encDb.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        avatar_url TEXT
+      )
+    ''');
+    encDb.execute("INSERT INTO users VALUES (1, 'Alice Johnson', 'alice@encrypted.com', 'admin', NULL)");
+    encDb.execute("INSERT INTO users VALUES (2, 'Robert Smith', 'bob@example.com', 'moderator', NULL)");
+    encDb.execute("INSERT INTO users VALUES (4, 'Diana Prince', 'diana@example.com', 'moderator', NULL)");
+    encDb.execute("INSERT INTO users VALUES (5, 'Eve Wilson', 'eve@example.com', 'user', NULL)");
+
+    encDb.execute('''
+      CREATE TABLE products (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        price REAL NOT NULL,
+        category TEXT,
+        in_stock INTEGER DEFAULT 1
+      )
+    ''');
+    encDb.execute("INSERT INTO products VALUES (1, 'Widget', 14.99, 'gadgets', 1)");
+    encDb.execute("INSERT INTO products VALUES (2, 'Gizmo', 24.99, 'gadgets', 1)");
+    encDb.execute("INSERT INTO products VALUES (3, 'Doohickey', 4.50, 'tools', 1)");
+
+    encDb.dispose();
+    print('Created (encrypted, password=demo123): $encPath');
+  }
+
   print('\nDone! Compare old.db and new.db in the app.');
+  print('For encrypted testing, compare old.db with encrypted.db (password: demo123).');
 }

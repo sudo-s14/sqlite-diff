@@ -31,6 +31,8 @@ class TableSidebarEntry {
 class DiffState extends ChangeNotifier {
   String? oldFilePath;
   String? newFilePath;
+  String? oldPassword;
+  String? newPassword;
 
   DatabaseDiff? diff;
   DiffStatus status = DiffStatus.idle;
@@ -68,6 +70,14 @@ class DiffState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setOldPassword(String password) {
+    oldPassword = password.isEmpty ? null : password;
+  }
+
+  void setNewPassword(String password) {
+    newPassword = password.isEmpty ? null : password;
+  }
+
   bool get canCompare =>
       oldFilePath != null &&
       newFilePath != null &&
@@ -86,7 +96,7 @@ class DiffState extends ChangeNotifier {
     try {
       final result = await compute(
         _compareFiles,
-        (oldFilePath!, newFilePath!),
+        (oldFilePath!, newFilePath!, oldPassword, newPassword),
       );
       diff = result;
       status = DiffStatus.done;
@@ -98,8 +108,14 @@ class DiffState extends ChangeNotifier {
     notifyListeners();
   }
 
-  static DatabaseDiff _compareFiles((String, String) paths) {
-    return SqliteDiff.compareFiles(paths.$1, paths.$2);
+  static DatabaseDiff _compareFiles(
+      (String, String, String?, String?) args) {
+    return SqliteDiff.compareFiles(
+      args.$1,
+      args.$2,
+      oldPassword: args.$3,
+      newPassword: args.$4,
+    );
   }
 
   void selectTable(String tableName) {

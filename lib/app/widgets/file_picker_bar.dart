@@ -3,10 +3,35 @@ import 'package:flutter/material.dart';
 
 import '../models/diff_state.dart';
 
-class FilePickerBar extends StatelessWidget {
+class FilePickerBar extends StatefulWidget {
   final DiffState state;
 
   const FilePickerBar({super.key, required this.state});
+
+  @override
+  State<FilePickerBar> createState() => _FilePickerBarState();
+}
+
+class _FilePickerBarState extends State<FilePickerBar> {
+  final _oldPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  bool _showPasswords = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _oldPasswordController.addListener(
+        () => widget.state.setOldPassword(_oldPasswordController.text));
+    _newPasswordController.addListener(
+        () => widget.state.setNewPassword(_newPasswordController.text));
+  }
+
+  @override
+  void dispose() {
+    _oldPasswordController.dispose();
+    _newPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,31 +40,54 @@ class FilePickerBar extends StatelessWidget {
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Row(
         children: [
-          _fileButton(
-            context,
-            label: 'Old Database',
-            path: state.oldFilePath,
-            onPick: () => _pickFile(context, isOld: true),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _fileButton(
+                  context,
+                  label: 'Old Database',
+                  path: widget.state.oldFilePath,
+                  onPick: () => _pickFile(context, isOld: true),
+                ),
+                _passwordField(
+                    _oldPasswordController, widget.state.oldFilePath != null),
+              ],
+            ),
           ),
           const SizedBox(width: 12),
           const Icon(Icons.arrow_forward, size: 20),
           const SizedBox(width: 12),
-          _fileButton(
-            context,
-            label: 'New Database',
-            path: state.newFilePath,
-            onPick: () => _pickFile(context, isOld: false),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _fileButton(
+                  context,
+                  label: 'New Database',
+                  path: widget.state.newFilePath,
+                  onPick: () => _pickFile(context, isOld: false),
+                ),
+                _passwordField(
+                    _newPasswordController, widget.state.newFilePath != null),
+              ],
+            ),
           ),
           const SizedBox(width: 24),
           FilledButton.icon(
-            onPressed: state.canCompare ? () => state.runDiff() : null,
+            onPressed:
+                widget.state.canCompare ? () => widget.state.runDiff() : null,
             icon: const Icon(Icons.compare_arrows),
             label: const Text('Compare'),
           ),
           const SizedBox(width: 16),
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+              border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outline
+                      .withValues(alpha: 0.3)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -47,28 +95,66 @@ class FilePickerBar extends StatelessWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.text_decrease, size: 18),
-                  onPressed: state.fontSize > DiffState.minFontSize
-                      ? state.decreaseFontSize
+                  onPressed: widget.state.fontSize > DiffState.minFontSize
+                      ? widget.state.decreaseFontSize
                       : null,
                   tooltip: 'Decrease font size',
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
                   padding: EdgeInsets.zero,
                 ),
-                Text('${state.fontSize.round()}',
+                Text('${widget.state.fontSize.round()}',
                     style: Theme.of(context).textTheme.labelMedium),
                 IconButton(
                   icon: const Icon(Icons.text_increase, size: 18),
-                  onPressed: state.fontSize < DiffState.maxFontSize
-                      ? state.increaseFontSize
+                  onPressed: widget.state.fontSize < DiffState.maxFontSize
+                      ? widget.state.increaseFontSize
                       : null,
                   tooltip: 'Increase font size',
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  constraints:
+                      const BoxConstraints(minWidth: 36, minHeight: 36),
                   padding: EdgeInsets.zero,
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _passwordField(TextEditingController controller, bool fileSelected) {
+    if (!fileSelected) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: SizedBox(
+        height: 32,
+        child: TextField(
+          controller: controller,
+          obscureText: !_showPasswords,
+          style: const TextStyle(fontSize: 12),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            prefixIcon: const Icon(Icons.lock_outline, size: 14),
+            prefixIconConstraints:
+                const BoxConstraints(minWidth: 28, minHeight: 28),
+            hintText: 'Password (optional)',
+            hintStyle: const TextStyle(fontSize: 11),
+            border: const OutlineInputBorder(),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _showPasswords ? Icons.visibility_off : Icons.visibility,
+                size: 14,
+              ),
+              onPressed: () =>
+                  setState(() => _showPasswords = !_showPasswords),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -81,37 +167,35 @@ class FilePickerBar extends StatelessWidget {
   }) {
     final fileName = path?.split('/').last;
 
-    return Expanded(
-      child: OutlinedButton(
-        onPressed: onPick,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          alignment: Alignment.centerLeft,
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.storage, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(label,
-                      style: Theme.of(context).textTheme.labelSmall),
-                  if (fileName != null)
-                    Text(fileName,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium),
-                  if (fileName == null)
-                    Text('Click to select...',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.outline)),
-                ],
-              ),
+    return OutlinedButton(
+      onPressed: onPick,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        alignment: Alignment.centerLeft,
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.storage, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label,
+                    style: Theme.of(context).textTheme.labelSmall),
+                if (fileName != null)
+                  Text(fileName,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                if (fileName == null)
+                  Text('Click to select...',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.outline)),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -124,9 +208,9 @@ class FilePickerBar extends StatelessWidget {
     if (result != null && result.files.single.path != null) {
       final path = result.files.single.path!;
       if (isOld) {
-        state.setOldFile(path);
+        widget.state.setOldFile(path);
       } else {
-        state.setNewFile(path);
+        widget.state.setNewFile(path);
       }
     }
   }
