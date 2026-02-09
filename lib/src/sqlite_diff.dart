@@ -28,7 +28,8 @@ class SqliteDiff {
 
   /// Compare two SQLite databases given their file paths.
   ///
-  /// Both databases are opened in read-only mode, compared, and then closed.
+  /// Both databases are opened in read-write mode (for WAL compatibility) with
+  /// query_only=ON to prevent modifications, compared, and then closed.
   /// Optional [oldPassword] and [newPassword] unlock SQLCipher-encrypted databases.
   static DatabaseDiff compareFiles(
     String oldPath,
@@ -60,7 +61,7 @@ class SqliteDiff {
       String path, String? password, String label) {
     final CommonDatabase db;
     try {
-      db = s3.sqlite3.open(path, mode: s3.OpenMode.readOnly);
+      db = s3.sqlite3.open(path, mode: s3.OpenMode.readWrite);
     } on SqliteException catch (e) {
       throw DiffException(
           '$label: Failed to open "$path" — ${e.message}');
@@ -74,6 +75,8 @@ class SqliteDiff {
         final escaped = password.replaceAll("'", "''");
         db.execute("PRAGMA key = '$escaped';");
       }
+      // Prevent accidental writes — we only read for diffing
+      db.execute('PRAGMA query_only = ON;');
       // Verify the database is readable (catches wrong password or corrupt file)
       db.select('SELECT count(*) FROM sqlite_master;');
     } on SqliteException catch (e) {
