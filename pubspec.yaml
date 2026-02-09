@@ -10,7 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   sqlite3: ^2.7.0
-  sqlcipher_flutter_libs: ^0.6.0
   collection: ^1.18.0
   meta: ^1.15.0
   file_picker: ^8.0.0

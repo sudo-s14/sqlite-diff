@@ -1,11 +1,21 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
+import 'package:sqlite3/open.dart';
 
 import 'models/diff_state.dart';
 import 'screens/home_screen.dart';
 import 'theme.dart';
 
 void main() {
+  _initSqlCipher();
   runApp(const SqliteDiffApp());
+}
+
+void _initSqlCipher() {
+  open.overrideFor(OperatingSystem.macOS, () {
+    return DynamicLibrary.open('libsqlcipher_native.dylib');
+  });
 }
 
 class SqliteDiffApp extends StatefulWidget {

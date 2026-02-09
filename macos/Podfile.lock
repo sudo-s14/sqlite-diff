@@ -2,37 +2,20 @@ PODS:
   - file_picker (0.0.1):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
-  - SQLCipher (4.10.0):
-    - SQLCipher/standard (= 4.10.0)
-  - SQLCipher/common (4.10.0)
-  - SQLCipher/standard (4.10.0):
-    - SQLCipher/common
-  - sqlcipher_flutter_libs (0.0.1):
-    - FlutterMacOS
-    - SQLCipher (~> 4.10.0)
 
 DEPENDENCIES:
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - sqlcipher_flutter_libs (from `Flutter/ephemeral/.symlinks/plugins/sqlcipher_flutter_libs/macos`)
-
-SPEC REPOS:
-  trunk:
-    - SQLCipher
 
 EXTERNAL SOURCES:
   file_picker:
     :path: Flutter/ephemeral/.symlinks/plugins/file_picker/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
-  sqlcipher_flutter_libs:
-    :path: Flutter/ephemeral/.symlinks/plugins/sqlcipher_flutter_libs/macos
 
 SPEC CHECKSUMS:
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  SQLCipher: eb79c64049cb002b4e9fcb30edb7979bf4706dfc
-  sqlcipher_flutter_libs: 01ead34db27ae5e49987cae46c8a34199eb22cfe
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
 

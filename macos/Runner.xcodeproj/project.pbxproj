@@ -195,7 +195,6 @@
 				71E9249356DF851D94C2B943 /* Pods-RunnerTests.release.xcconfig */,
 				7AF259FAC8BCC72019087EE9 /* Pods-RunnerTests.profile.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -235,6 +234,7 @@
 			buildConfigurationList = 33CC10FB2044A3C60003C045 /* Build configuration list for PBXNativeTarget "Runner" */;
 			buildPhases = (
 				FEC78A04367BF726644636BF /* [CP] Check Pods Manifest.lock */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* Build Rust SQLCipher */,
 				33CC10E92044A3C60003C045 /* Sources */,
 				33CC10EA2044A3C60003C045 /* Frameworks */,
 				33CC10EB2044A3C60003C045 /* Resources */,
@@ -383,6 +383,23 @@
 			shellPath = /bin/sh;
 			shellScript = "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh && touch Flutter/ephemeral/tripwire";
 		};
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* Build Rust SQLCipher */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${SRCROOT}/../rust/sqlcipher_native/src/lib.rs",
+				"${SRCROOT}/../rust/sqlcipher_native/Cargo.toml",
+			);
+			name = "Build Rust SQLCipher";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/libsqlcipher_native.dylib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nRUST_DIR=\"${SRCROOT}/../rust/sqlcipher_native\"\ncd \"$RUST_DIR\"\n\n# Build Rust library\nexport PATH=\"$HOME/.cargo/bin:$PATH\"\ncargo build --release\n\n# Copy dylib into app Frameworks\nFRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nmkdir -p \"$FRAMEWORKS_DIR\"\ncp \"$RUST_DIR/target/release/libsqlcipher_native.dylib\" \"$FRAMEWORKS_DIR/\"\n\n# Fix install name so the app can find it via @rpath\ninstall_name_tool -id \"@rpath/libsqlcipher_native.dylib\" \"$FRAMEWORKS_DIR/libsqlcipher_native.dylib\"\n\n# Code sign\ncodesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" --timestamp=none \"$FRAMEWORKS_DIR/libsqlcipher_native.dylib\"\n";
+		};
 		D15515D2559D40AEB468044B /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -391,9 +408,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
