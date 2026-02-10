@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import 'models/database_diff.dart';
@@ -41,16 +43,41 @@ class SqliteDiff {
             ? options.withLabels(oldLabel: oldPath, newLabel: newPath)
             : options;
 
-    final oldDb = await _openDatabase(oldPath, oldPassword, 'Old database');
+    // Copy to temp dir so WAL-mode databases can create -shm/-wal files
+    // without macOS sandbox restrictions on the original directory.
+    final tempDir = await Directory.systemTemp.createTemp('sqlite_diff_');
     try {
-      final newDb = await _openDatabase(newPath, newPassword, 'New database');
+      final oldTemp = '${tempDir.path}/old.db';
+      final newTemp = '${tempDir.path}/new.db';
+      await _copyWithCompanions(oldPath, oldTemp);
+      await _copyWithCompanions(newPath, newTemp);
+
+      final oldDb = await _openDatabase(oldTemp, oldPassword, 'Old database');
       try {
-        return await compareDatabases(oldDb, newDb, options: effectiveOptions);
+        final newDb =
+            await _openDatabase(newTemp, newPassword, 'New database');
+        try {
+          return await compareDatabases(
+              oldDb, newDb, options: effectiveOptions);
+        } finally {
+          await newDb.close();
+        }
       } finally {
-        await newDb.close();
+        await oldDb.close();
       }
     } finally {
-      await oldDb.close();
+      await tempDir.delete(recursive: true);
+    }
+  }
+
+  /// Copy a database file and its WAL/SHM companions (if present) to [dest].
+  static Future<void> _copyWithCompanions(String src, String dest) async {
+    await File(src).copy(dest);
+    for (final suffix in ['-wal', '-shm']) {
+      final companion = File('$src$suffix');
+      if (await companion.exists()) {
+        await companion.copy('$dest$suffix');
+      }
     }
   }
 
