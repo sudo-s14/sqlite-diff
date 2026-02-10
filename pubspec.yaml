@@ -9,10 +9,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  sqlite3: ^2.7.0
+  sqflite_sqlcipher: ^3.4.0
   collection: ^1.18.0
   meta: ^1.15.0
   file_picker: ^8.0.0
+  desktop_drop: ^0.7.0
 
 dev_dependencies:
   flutter_test:

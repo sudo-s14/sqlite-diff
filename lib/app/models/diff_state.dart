@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:sqlite_diff/sqlite_diff.dart';
 
 enum DiffStatus { idle, loading, done, error }
@@ -94,9 +94,11 @@ class DiffState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await compute(
-        _compareFiles,
-        (oldFilePath!, newFilePath!, oldPassword, newPassword),
+      final result = await SqliteDiff.compareFiles(
+        oldFilePath!,
+        newFilePath!,
+        oldPassword: oldPassword,
+        newPassword: newPassword,
       );
       diff = result;
       status = DiffStatus.done;
@@ -106,16 +108,6 @@ class DiffState extends ChangeNotifier {
       errorMessage = e.toString();
     }
     notifyListeners();
-  }
-
-  static DatabaseDiff _compareFiles(
-      (String, String, String?, String?) args) {
-    return SqliteDiff.compareFiles(
-      args.$1,
-      args.$2,
-      oldPassword: args.$3,
-      newPassword: args.$4,
-    );
   }
 
   void selectTable(String tableName) {

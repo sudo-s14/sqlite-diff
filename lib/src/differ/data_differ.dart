@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:sqlite3/common.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../models/diff_options.dart';
 import '../models/row_diff.dart';
@@ -9,14 +9,14 @@ import '../models/table_schema.dart';
 /// Compares data in a single table across two databases.
 class DataDiffer {
   /// Compare data for a single table.
-  TableDataDiff diff({
-    required CommonDatabase oldDb,
-    required CommonDatabase newDb,
+  Future<TableDataDiff> diff({
+    required Database oldDb,
+    required Database newDb,
     required String tableName,
     required TableSchema oldSchema,
     required TableSchema newSchema,
     required DiffOptions options,
-  }) {
+  }) async {
     final keyColumns =
         _resolveKeyColumns(tableName, oldSchema, options);
     final comparedColumns =
@@ -30,8 +30,8 @@ class DataDiffer {
       }
     }
 
-    final oldRows = _readRows(oldDb, tableName, selectColumns, keyColumns);
-    final newRows = _readRows(newDb, tableName, selectColumns, keyColumns);
+    final oldRows = await _readRows(oldDb, tableName, selectColumns, keyColumns);
+    final newRows = await _readRows(newDb, tableName, selectColumns, keyColumns);
 
     final oldKeys = oldRows.keys.toSet();
     final newKeys = newRows.keys.toSet();
@@ -135,15 +135,15 @@ class DataDiffer {
     return shared;
   }
 
-  Map<_CompositeKey, Map<String, Object?>> _readRows(
-    CommonDatabase db,
+  Future<Map<_CompositeKey, Map<String, Object?>>> _readRows(
+    Database db,
     String tableName,
     List<String> selectColumns,
     List<String> keyColumns,
-  ) {
+  ) async {
     final quotedCols = selectColumns.map((c) => '"$c"').join(', ');
     final sql = 'SELECT $quotedCols FROM "$tableName"';
-    final result = db.select(sql);
+    final result = await db.rawQuery(sql);
 
     final rows = <_CompositeKey, Map<String, Object?>>{};
     for (final row in result) {

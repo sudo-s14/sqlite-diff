@@ -1,4 +1,4 @@
-import 'package:sqlite3/common.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../models/database_diff.dart';
 import '../models/diff_options.dart';
@@ -12,18 +12,18 @@ import 'schema_reader.dart';
 
 /// Orchestrates the full database diff operation.
 class DatabaseDiffer {
-  final CommonDatabase _oldDb;
-  final CommonDatabase _newDb;
+  final Database _oldDb;
+  final Database _newDb;
   final DiffOptions _options;
 
   DatabaseDiffer(this._oldDb, this._newDb, this._options);
 
-  DatabaseDiff diff() {
+  Future<DatabaseDiff> diff() async {
     final oldReader = SchemaReader(_oldDb);
     final newReader = SchemaReader(_newDb);
 
-    var oldSchemas = oldReader.readAllSchemas();
-    var newSchemas = newReader.readAllSchemas();
+    var oldSchemas = await oldReader.readAllSchemas();
+    var newSchemas = await newReader.readAllSchemas();
 
     // Apply table filter
     if (_options.tables != null) {
@@ -59,7 +59,7 @@ class DatabaseDiffer {
       final dataDiffer = DataDiffer();
 
       for (final tableName in sharedTables.toList()..sort()) {
-        dataDiffs.add(dataDiffer.diff(
+        dataDiffs.add(await dataDiffer.diff(
           oldDb: _oldDb,
           newDb: _newDb,
           tableName: tableName,
@@ -73,7 +73,7 @@ class DatabaseDiffer {
       if (_options.includeDataForExclusiveTables) {
         for (final tableName
             in (oldNames.difference(newNames).toList()..sort())) {
-          dataDiffs.add(_allRowsAs(
+          dataDiffs.add(await _allRowsAs(
             _oldDb,
             tableName,
             oldSchemas[tableName]!,
@@ -82,7 +82,7 @@ class DatabaseDiffer {
         }
         for (final tableName
             in (newNames.difference(oldNames).toList()..sort())) {
-          dataDiffs.add(_allRowsAs(
+          dataDiffs.add(await _allRowsAs(
             _newDb,
             tableName,
             newSchemas[tableName]!,
@@ -100,12 +100,12 @@ class DatabaseDiffer {
     );
   }
 
-  TableDataDiff _allRowsAs(
-    CommonDatabase db,
+  Future<TableDataDiff> _allRowsAs(
+    Database db,
     String tableName,
     TableSchema schema,
     RowChangeKind kind,
-  ) {
+  ) async {
     final keyColumns = schema.primaryKeyColumns.isNotEmpty
         ? schema.primaryKeyColumns
         : ['rowid'];
@@ -119,7 +119,7 @@ class DatabaseDiffer {
     }
 
     final quotedCols = selectColumns.map((c) => '"$c"').join(', ');
-    final result = db.select('SELECT $quotedCols FROM "$tableName"');
+    final result = await db.rawQuery('SELECT $quotedCols FROM "$tableName"');
 
     final rows = <RowDiff>[];
     for (final row in result) {

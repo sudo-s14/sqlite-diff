@@ -1,5 +1,4 @@
-import 'package:sqlite3/common.dart';
-import 'package:sqlite3/sqlite3.dart' as s3;
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import 'models/database_diff.dart';
 import 'models/diff_options.dart';
@@ -18,7 +17,7 @@ class DiffException implements Exception {
 /// Main entry point for comparing two SQLite databases.
 ///
 /// ```dart
-/// final diff = SqliteDiff.compareFiles('old.db', 'new.db');
+/// final diff = await SqliteDiff.compareFiles('old.db', 'new.db');
 /// if (!diff.isEmpty) {
 ///   print(SqliteDiff.formatAsText(diff));
 /// }
@@ -28,72 +27,58 @@ class SqliteDiff {
 
   /// Compare two SQLite databases given their file paths.
   ///
-  /// Both databases are opened in read-write mode (for WAL compatibility) with
-  /// query_only=ON to prevent modifications, compared, and then closed.
+  /// Both databases are opened read-only for comparison.
   /// Optional [oldPassword] and [newPassword] unlock SQLCipher-encrypted databases.
-  static DatabaseDiff compareFiles(
+  static Future<DatabaseDiff> compareFiles(
     String oldPath,
     String newPath, {
     DiffOptions options = DiffOptions.defaults,
     String? oldPassword,
     String? newPassword,
-  }) {
+  }) async {
     final effectiveOptions =
         (options.oldLabel == null && options.newLabel == null)
             ? options.withLabels(oldLabel: oldPath, newLabel: newPath)
             : options;
 
-    final oldDb = _openDatabase(oldPath, oldPassword, 'Old database');
+    final oldDb = await _openDatabase(oldPath, oldPassword, 'Old database');
     try {
-      final newDb = _openDatabase(newPath, newPassword, 'New database');
+      final newDb = await _openDatabase(newPath, newPassword, 'New database');
       try {
-        return compareDatabases(oldDb, newDb, options: effectiveOptions);
+        return await compareDatabases(oldDb, newDb, options: effectiveOptions);
       } finally {
-        newDb.dispose();
+        await newDb.close();
       }
     } finally {
-      oldDb.dispose();
+      await oldDb.close();
     }
   }
 
   /// Open a database file with optional encryption key and verify it's readable.
-  static CommonDatabase _openDatabase(
-      String path, String? password, String label) {
-    final CommonDatabase db;
+  static Future<Database> _openDatabase(
+      String path, String? password, String label) async {
     try {
-      db = s3.sqlite3.open(path, mode: s3.OpenMode.readWrite);
-    } on SqliteException catch (e) {
-      throw DiffException(
-          '$label: Failed to open "$path" — ${e.message}');
-    } catch (e) {
-      throw DiffException(
-          '$label: Failed to open "$path" — $e');
-    }
+      final db = await openDatabase(
+        path,
+        password: (password != null && password.isNotEmpty) ? password : null,
+        readOnly: true,
+      );
 
-    try {
-      if (password != null && password.isNotEmpty) {
-        final escaped = password.replaceAll("'", "''");
-        db.execute("PRAGMA key = '$escaped';");
-      }
-      // Prevent accidental writes — we only read for diffing
-      db.execute('PRAGMA query_only = ON;');
       // Verify the database is readable (catches wrong password or corrupt file)
-      db.select('SELECT count(*) FROM sqlite_master;');
-    } on SqliteException catch (e) {
-      db.dispose();
+      await db.rawQuery('SELECT count(*) FROM sqlite_master;');
+
+      return db;
+    } on DatabaseException catch (e) {
       final reason = _describeOpenError(e, password);
       throw DiffException('$label: $reason');
     } catch (e) {
-      db.dispose();
-      throw DiffException('$label: Failed to read "$path" — $e');
+      throw DiffException('$label: Failed to open "$path" — $e');
     }
-
-    return db;
   }
 
-  /// Produce a human-readable error reason from a SqliteException.
-  static String _describeOpenError(SqliteException e, String? password) {
-    final msg = e.message.toLowerCase();
+  /// Produce a human-readable error reason from a DatabaseException.
+  static String _describeOpenError(DatabaseException e, String? password) {
+    final msg = e.toString().toLowerCase();
     if (msg.contains('not a database') || msg.contains('file is encrypted')) {
       if (password != null && password.isNotEmpty) {
         return 'Wrong password or file is not a valid SQLite/SQLCipher database.';
@@ -109,17 +94,17 @@ class SqliteDiff {
     if (msg.contains('read-only')) {
       return 'File cannot be opened — permission denied.';
     }
-    return e.message;
+    return e.toString();
   }
 
   /// Compare two already-open SQLite database connections.
   ///
   /// The caller is responsible for managing the lifecycle of both databases.
-  static DatabaseDiff compareDatabases(
-    CommonDatabase oldDb,
-    CommonDatabase newDb, {
+  static Future<DatabaseDiff> compareDatabases(
+    Database oldDb,
+    Database newDb, {
     DiffOptions options = DiffOptions.defaults,
-  }) {
+  }) async {
     return DatabaseDiffer(oldDb, newDb, options).diff();
   }
 

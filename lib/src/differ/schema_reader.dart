@@ -1,17 +1,17 @@
-import 'package:sqlite3/common.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../models/column_info.dart';
 import '../models/table_schema.dart';
 
 /// Reads table schemas from a SQLite database.
 class SchemaReader {
-  final CommonDatabase _db;
+  final Database _db;
 
   SchemaReader(this._db);
 
   /// Returns all user table names (excludes sqlite_* internal tables).
-  List<String> readTableNames() {
-    final result = _db.select(
+  Future<List<String>> readTableNames() async {
+    final result = await _db.rawQuery(
       "SELECT name FROM sqlite_master "
       "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' "
       "ORDER BY name",
@@ -20,14 +20,14 @@ class SchemaReader {
   }
 
   /// Reads the full schema for a specific table.
-  TableSchema readTableSchema(String tableName) {
-    final createResult = _db.select(
+  Future<TableSchema> readTableSchema(String tableName) async {
+    final createResult = await _db.rawQuery(
       "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
       [tableName],
     );
     final createSql = createResult.first['sql'] as String;
 
-    final columnsResult = _db.select('PRAGMA table_info("$tableName")');
+    final columnsResult = await _db.rawQuery('PRAGMA table_info("$tableName")');
 
     final columns = <ColumnInfo>[];
     final primaryKeyColumns = <String>[];
@@ -71,8 +71,12 @@ class SchemaReader {
   }
 
   /// Reads all table schemas.
-  Map<String, TableSchema> readAllSchemas() {
-    final names = readTableNames();
-    return {for (final name in names) name: readTableSchema(name)};
+  Future<Map<String, TableSchema>> readAllSchemas() async {
+    final names = await readTableNames();
+    final schemas = <String, TableSchema>{};
+    for (final name in names) {
+      schemas[name] = await readTableSchema(name);
+    }
+    return schemas;
   }
 }

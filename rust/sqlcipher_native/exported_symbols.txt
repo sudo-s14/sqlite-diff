@@ -1,2 +1,0 @@
-_sqlite3_*
-_sqlcipher_native_init

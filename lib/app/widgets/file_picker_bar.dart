@@ -1,3 +1,4 @@
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -16,6 +17,8 @@ class _FilePickerBarState extends State<FilePickerBar> {
   final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   bool _showPasswords = false;
+  bool _draggingOld = false;
+  bool _draggingNew = false;
 
   @override
   void initState() {
@@ -41,36 +44,56 @@ class _FilePickerBarState extends State<FilePickerBar> {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _fileButton(
-                  context,
-                  label: 'Old Database',
-                  path: widget.state.oldFilePath,
-                  onPick: () => _pickFile(context, isOld: true),
-                ),
-                _passwordField(
-                    _oldPasswordController, widget.state.oldFilePath != null),
-              ],
+            child: _dropZone(
+              isDragging: _draggingOld,
+              onDragEntered: () => setState(() => _draggingOld = true),
+              onDragExited: () => setState(() => _draggingOld = false),
+              onDropped: (path) {
+                setState(() => _draggingOld = false);
+                widget.state.setOldFile(path);
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _fileButton(
+                    context,
+                    label: 'Old Database',
+                    path: widget.state.oldFilePath,
+                    onPick: () => _pickFile(context, isOld: true),
+                    isDragging: _draggingOld,
+                  ),
+                  _passwordField(
+                      _oldPasswordController, widget.state.oldFilePath != null),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 12),
           const Icon(Icons.arrow_forward, size: 20),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _fileButton(
-                  context,
-                  label: 'New Database',
-                  path: widget.state.newFilePath,
-                  onPick: () => _pickFile(context, isOld: false),
-                ),
-                _passwordField(
-                    _newPasswordController, widget.state.newFilePath != null),
-              ],
+            child: _dropZone(
+              isDragging: _draggingNew,
+              onDragEntered: () => setState(() => _draggingNew = true),
+              onDragExited: () => setState(() => _draggingNew = false),
+              onDropped: (path) {
+                setState(() => _draggingNew = false);
+                widget.state.setNewFile(path);
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _fileButton(
+                    context,
+                    label: 'New Database',
+                    path: widget.state.newFilePath,
+                    onPick: () => _pickFile(context, isOld: false),
+                    isDragging: _draggingNew,
+                  ),
+                  _passwordField(
+                      _newPasswordController, widget.state.newFilePath != null),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 24),
@@ -159,19 +182,45 @@ class _FilePickerBarState extends State<FilePickerBar> {
     );
   }
 
+  Widget _dropZone({
+    required bool isDragging,
+    required VoidCallback onDragEntered,
+    required VoidCallback onDragExited,
+    required void Function(String path) onDropped,
+    required Widget child,
+  }) {
+    return DropTarget(
+      onDragEntered: (_) => onDragEntered(),
+      onDragExited: (_) => onDragExited(),
+      onDragDone: (details) {
+        if (details.files.isNotEmpty) {
+          onDropped(details.files.first.path);
+        }
+      },
+      child: child,
+    );
+  }
+
   Widget _fileButton(
     BuildContext context, {
     required String label,
     required String? path,
     required VoidCallback onPick,
+    bool isDragging = false,
   }) {
     final fileName = path?.split('/').last;
+    final colors = Theme.of(context).colorScheme;
 
     return OutlinedButton(
       onPressed: onPick,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         alignment: Alignment.centerLeft,
+        side: isDragging
+            ? BorderSide(color: colors.primary, width: 2)
+            : null,
+        backgroundColor:
+            isDragging ? colors.primary.withValues(alpha: 0.08) : null,
       ),
       child: Row(
         children: [
@@ -189,9 +238,11 @@ class _FilePickerBarState extends State<FilePickerBar> {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium),
                 if (fileName == null)
-                  Text('Click to select...',
+                  Text(isDragging ? 'Drop here...' : 'Click or drop file...',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.outline)),
+                          color: isDragging
+                              ? colors.primary
+                              : colors.outline)),
               ],
             ),
           ),
