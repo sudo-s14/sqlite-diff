@@ -58,11 +58,14 @@ class SqliteDiff {
   static Future<Database> _openDatabase(
       String path, String? password, String label) async {
     try {
+      // Open read-write for WAL-mode compatibility, then set query_only
       final db = await openDatabase(
         path,
         password: (password != null && password.isNotEmpty) ? password : null,
-        readOnly: true,
       );
+
+      // Prevent accidental writes — we only read for diffing
+      await db.execute('PRAGMA query_only = ON;');
 
       // Verify the database is readable (catches wrong password or corrupt file)
       await db.rawQuery('SELECT count(*) FROM sqlite_master;');
